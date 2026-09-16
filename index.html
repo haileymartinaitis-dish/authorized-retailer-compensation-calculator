@@ -5,11 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Retailer Compensation Calculator Widget</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <style translate="no">
         :root { --boost-orange: #ff5400; --text-dark: #333333; --bg-light: #f9f9f9; --border-color: #e0e0e0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--text-dark); background-color: transparent; margin: 0; padding: 10px; }
-        h3 { color: var(--boost-orange); margin-top: 0; font-size: 1.4rem; display: flex; align-items: center; justify-content: space-between; }
         .brand-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
         .brand-card { border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
         .calc-input { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; margin-top: 4px; font-size: 1rem; transition: border-color 0.2s; }
@@ -26,8 +24,6 @@
     <div class="brand-grid">
         <!-- Inputs Card -->
         <div class="brand-card">
-            <h3>Transaction Details</h3>
-            
             <form id="calculatorForm">
                 <label class="calc-label" for="planSelect">Plan Selection</label>
                 <select id="planSelect" class="calc-input">
@@ -68,7 +64,6 @@
 
         <!-- Outputs Card -->
         <div class="brand-card flex flex-col justify-center">
-            <h3>Expected Payout</h3>
             
             <div id="mrcBreakdownText" class="text-sm text-center mb-4 font-medium bg-gray-100 p-3 rounded border border-gray-200">
                 Commission Basis: <strong style="color: var(--boost-orange)">-</strong>
@@ -88,8 +83,8 @@
         </div>
     </div>
 
+    <!-- STANDARD ES5 SCRIPT BLOCK -->
     <script>
-        // Formatting helpers
         var formatCurrency = function(num) {
             return '$' + parseFloat(num).toFixed(2);
         };
@@ -108,7 +103,6 @@
             return html;
         };
 
-        // Core math logic
         var runCalculatorLogic = function() {
             var planSelect = document.getElementById('planSelect');
             var typeSelect = document.getElementById('typeSelect');
@@ -195,6 +189,7 @@
             document.getElementById('month2Breakdown').innerHTML = formatBreakdownList(m2Breakdown);
         };
 
+        // Attach listener explicitly 
         var btn = document.getElementById('calculateBtn');
         if (btn) {
             btn.addEventListener('click', function(e) {
@@ -205,6 +200,16 @@
         
         // Auto-run once to initialize zeros and text
         runCalculatorLogic();
+
+        // Auto-resize logic to communicate height to the parent window (Yoobic)
+        if (window.ResizeObserver) {
+            const resizeObserver = new ResizeObserver(() => {
+                // Add a small 20px buffer to ensure no scrollbars appear
+                const newHeight = document.body.scrollHeight + 20; 
+                window.parent.postMessage({ type: 'resize', height: newHeight }, '*');
+            });
+            resizeObserver.observe(document.body);
+        }
     </script>
 </body>
 </html>
