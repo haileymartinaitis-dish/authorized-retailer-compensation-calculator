@@ -15,70 +15,80 @@
         .calc-label { font-weight: bold; display: block; margin-top: 15px; color: var(--text-dark); }
         .output-box { background-color: var(--bg-light); border: 2px solid var(--boost-orange); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 15px; }
         .output-value { font-size: 2.5rem; font-weight: bold; color: var(--boost-orange); line-height: 1.2; }
-        .calc-btn { background-color: var(--boost-orange); color: #fff; border: none; padding: 12px 20px; font-size: 1.1rem; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 20px; transition: background-color 0.2s; text-transform: uppercase; }
-        .calc-btn:hover { background-color: #e64a00; }
+        .payout-table { width: 100%; border-collapse: collapse; margin-top: 5px; background-color: #fff; }
+        .payout-table th, .payout-table td { border: 1px solid var(--border-color); padding: 12px 15px; text-align: left; vertical-align: middle; }
+        .payout-table th { background-color: var(--bg-light); color: var(--boost-orange); font-weight: bold; font-size: 1.05rem; }
+        .payout-table tr:nth-child(even) { background-color: #fafafa; }
     </style>
 </head>
 <body>
 
-    <div class="brand-grid">
+    <div style="max-width: 1000px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px;">
         <!-- Inputs Card -->
         <div class="brand-card">
+            <h3 style="color: var(--boost-orange); margin-top: 0; font-size: 1.4rem; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Transaction Details</h3>
             <form id="calculatorForm">
-                <label class="calc-label" for="planSelect">Plan Selection</label>
-                <select id="planSelect" class="calc-input">
-                    <option value="30">$25 Unlimited (Base Cost: $30)</option>
-                    <option value="45">$40 Global Connection (Base Cost: $45)</option>
-                    <option value="55">$50 Unlimited+ (Base Cost: $55)</option>
-                    <option value="65">$60 Unlimited Premium (Base Cost: $65)</option>
-                </select>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px;">
+                    <div>
+                        <label class="calc-label" style="margin-top: 0;" for="planSelect">Plan Selection</label>
+                        <select id="planSelect" class="calc-input">
+                            <option value="30">$25 Unlimited (Base Cost: $30)</option>
+                            <option value="45">$40 Global Connection (Base Cost: $45)</option>
+                            <option value="55">$50 Unlimited+ (Base Cost: $55)</option>
+                            <option value="65">$60 Unlimited Premium (Base Cost: $65)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="calc-label" style="margin-top: 0;" for="typeSelect">Transaction Type</label>
+                        <select id="typeSelect" class="calc-input">
+                            <option value="subsidized">Subsidized Activation</option>
+                            <option value="byo">BYO (Non-Subsidized) Activation</option>
+                            <option value="upgrade">Device Upgrade</option>
+                        </select>
+                    </div>
+                </div>
 
-                <label class="calc-label" for="typeSelect">Transaction Type</label>
-                <select id="typeSelect" class="calc-input">
-                    <option value="subsidized">Subsidized Activation</option>
-                    <option value="byo">BYO (Non-Subsidized) Activation</option>
-                    <option value="upgrade">Device Upgrade</option>
-                </select>
-
-                <div class="mt-4 mb-2 flex items-center">
+                <div class="mt-4 mb-4 flex items-center bg-gray-50 p-3 rounded border border-gray-200">
                     <input type="checkbox" id="autoPaySelect" class="w-5 h-5" style="accent-color: var(--boost-orange); cursor: pointer;" checked>
-                    <label for="autoPaySelect" class="ml-2 font-bold" style="margin-top: 0; color: var(--text-dark); cursor: pointer;">Enrolled in AutoPay</label>
+                    <label for="autoPaySelect" class="ml-2 font-bold" style="margin-top: 0; color: var(--text-dark); cursor: pointer;">Customer is Enrolled in AutoPay</label>
                 </div>
 
                 <div class="flex gap-4">
                     <div class="flex-1">
-                        <label class="calc-label" for="setupFee">Device Setup Fee ($)</label>
+                        <label class="calc-label" style="margin-top: 0;" for="setupFee">Device Setup Fee ($)</label>
                         <input type="number" id="setupFee" class="calc-input" min="0" max="35" value="4" placeholder="0 - 35">
                         <p class="text-xs text-gray-500 mt-1">Max: $35</p>
                     </div>
                     <div class="flex-1">
-                        <label class="calc-label" for="paymentFee">In-Store Payment Fee ($)</label>
+                        <label class="calc-label" style="margin-top: 0;" for="paymentFee">In-Store Payment Fee ($)</label>
                         <input type="number" id="paymentFee" class="calc-input" min="0" max="4" value="4" placeholder="0 - 4">
                         <p class="text-xs text-gray-500 mt-1">Max: $4</p>
                     </div>
                 </div>
-                
-                <button type="button" id="calculateBtn" class="calc-btn">Calculate Expected Payout</button>
             </form>
         </div>
 
         <!-- Outputs Card -->
-        <div class="brand-card flex flex-col justify-center">
+        <div class="brand-card">
+            <h3 style="color: var(--boost-orange); margin-top: 0; font-size: 1.4rem; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px;">Expected Payout Schedule</h3>
             
             <div id="mrcBreakdownText" class="text-sm text-center mb-4 font-medium bg-gray-100 p-3 rounded border border-gray-200">
                 Commission Basis: <strong style="color: var(--boost-orange)">-</strong>
             </div>
 
-            <div class="output-box">
-                <div class="text-sm font-bold uppercase tracking-wide text-gray-600">Month 1 Payout</div>
-                <div id="month1Output" class="output-value">$0.00</div>
-                <div id="month1Breakdown" class="mt-4 text-left bg-white p-3 rounded border border-gray-200"></div>
-            </div>
-
-            <div class="output-box">
-                <div class="text-sm font-bold uppercase tracking-wide text-gray-600">Month 2 Payout</div>
-                <div id="month2Output" class="output-value">$0.00</div>
-                <div id="month2Breakdown" class="mt-4 text-left bg-white p-3 rounded border border-gray-200"></div>
+            <div style="overflow-x: auto;">
+                <table class="payout-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 15%;">Month</th>
+                            <th style="width: 25%;">Total Payout</th>
+                            <th style="width: 60%;">Earning Breakdown</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dynamicOutputs">
+                        <!-- Months dynamically injected here via JS -->
+                    </tbody>
+                </table>
             </div>
         </div>
     </div>
@@ -110,11 +120,10 @@
             var setupFeeInput = document.getElementById('setupFee');
             var paymentFeeInput = document.getElementById('paymentFee');
             
-            var month1Output = document.getElementById('month1Output');
-            var month2Output = document.getElementById('month2Output');
+            var dynamicOutputs = document.getElementById('dynamicOutputs');
             var mrcBreakdownText = document.getElementById('mrcBreakdownText');
             
-            if (!planSelect || !month1Output) return;
+            if (!planSelect || !dynamicOutputs) return;
 
             var mrc = parseFloat(planSelect.value) || 0;
             var type = typeSelect.value;
@@ -139,11 +148,6 @@
                 }
             }
 
-            var m1 = 0;
-            var m2 = 0;
-            var m1Breakdown = [];
-            var m2Breakdown = [];
-
             var stdIncentive = activeMrc * 0.05;
             var newActSub = activeMrc * 0.10;
             var simLoad = activeMrc * 0.10;
@@ -151,51 +155,70 @@
             var upgradeBounty = activeMrc * 0.125;
             var autoPayIncentive = isAutoPay ? (activeMrc * 0.05) : 0;
 
-            if (type === 'subsidized') {
-                m1 = stdIncentive + newActSub + simLoad + totalOneTimeFees;
-                m1Breakdown.push({ label: 'Standard (5%)', value: stdIncentive });
-                m1Breakdown.push({ label: 'New Act (10%)', value: newActSub });
-                m1Breakdown.push({ label: 'SIM Load (10%)', value: simLoad });
-                if (totalOneTimeFees > 0) m1Breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
-
-                m2 = stdIncentive + newActSub + simLoad + autoPayIncentive;
-                m2Breakdown.push({ label: 'Standard (5%)', value: stdIncentive });
-                m2Breakdown.push({ label: 'New Act (10%)', value: newActSub });
-                m2Breakdown.push({ label: 'SIM Load (10%)', value: simLoad });
-                if (isAutoPay) m2Breakdown.push({ label: 'AutoPay (5%)', value: autoPayIncentive });
-            } else if (type === 'byo') {
-                m1 = stdIncentive + newActByo + totalOneTimeFees;
-                m1Breakdown.push({ label: 'Standard (5%)', value: stdIncentive });
-                m1Breakdown.push({ label: 'New Act (50%)', value: newActByo });
-                if (totalOneTimeFees > 0) m1Breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
-
-                m2 = stdIncentive + newActByo + autoPayIncentive;
-                m2Breakdown.push({ label: 'Standard (5%)', value: stdIncentive });
-                m2Breakdown.push({ label: 'New Act (50%)', value: newActByo });
-                if (isAutoPay) m2Breakdown.push({ label: 'AutoPay (5%)', value: autoPayIncentive });
-            } else if (type === 'upgrade') {
-                m1 = upgradeBounty + totalOneTimeFees;
-                m1Breakdown.push({ label: 'Upgrade (12.5%)', value: upgradeBounty });
-                if (totalOneTimeFees > 0) m1Breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
-
-                m2 = upgradeBounty;
-                m2Breakdown.push({ label: 'Upgrade (12.5%)', value: upgradeBounty });
-            }
-
-            month1Output.textContent = formatCurrency(m1);
-            document.getElementById('month1Breakdown').innerHTML = formatBreakdownList(m1Breakdown);
+            // Determine maximum months to show based on type
+            var maxMonths = (type === 'byo') ? 4 : 6;
             
-            month2Output.textContent = formatCurrency(m2);
-            document.getElementById('month2Breakdown').innerHTML = formatBreakdownList(m2Breakdown);
+            // Clear existing output
+            dynamicOutputs.innerHTML = '';
+
+            // Generate each month dynamically
+            for (var m = 1; m <= maxMonths; m++) {
+                var total = 0;
+                var breakdown = [];
+
+                if (type === 'subsidized') {
+                    total += stdIncentive + newActSub + simLoad;
+                    breakdown.push({ label: 'Monthly Incentive (5%)', value: stdIncentive });
+                    breakdown.push({ label: 'New Activation Bounty (10%)', value: newActSub });
+                    breakdown.push({ label: 'Simplified SIM Loading (10%)', value: simLoad });
+
+                    if (m === 1 && totalOneTimeFees > 0) {
+                        total += totalOneTimeFees;
+                        breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
+                    }
+                    if (m > 1 && isAutoPay) {
+                        total += autoPayIncentive;
+                        breakdown.push({ label: 'Auto Top Up (5%)', value: autoPayIncentive });
+                    }
+                } else if (type === 'byo') {
+                    total += stdIncentive + newActByo;
+                    breakdown.push({ label: 'Monthly Incentive (5%)', value: stdIncentive });
+                    breakdown.push({ label: 'New Activation Bounty (50%)', value: newActByo });
+
+                    if (m === 1 && totalOneTimeFees > 0) {
+                        total += totalOneTimeFees;
+                        breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
+                    }
+                    if (m > 1 && isAutoPay) {
+                        total += autoPayIncentive;
+                        breakdown.push({ label: 'Auto Top Up (5%)', value: autoPayIncentive });
+                    }
+                } else if (type === 'upgrade') {
+                    total += upgradeBounty;
+                    breakdown.push({ label: 'Upgrade Bounty (12.5%)', value: upgradeBounty });
+
+                    if (m === 1 && totalOneTimeFees > 0) {
+                        total += totalOneTimeFees;
+                        breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
+                    }
+                }
+
+                // Build and inject HTML for this month table row
+                var trHtml = '<tr>' +
+                             '<td style="font-weight: bold; color: #555; white-space: nowrap;">Month ' + m + '</td>' +
+                             '<td style="font-size: 1.5rem; font-weight: bold; color: var(--boost-orange); white-space: nowrap;">' + formatCurrency(total) + '</td>' +
+                             '<td>' + formatBreakdownList(breakdown) + '</td>' +
+                             '</tr>';
+                
+                dynamicOutputs.innerHTML += trHtml;
+            }
         };
 
-        // Attach listener explicitly 
-        var btn = document.getElementById('calculateBtn');
-        if (btn) {
-            btn.addEventListener('click', function(e) {
-                e.preventDefault();
-                runCalculatorLogic();
-            });
+        // Attach listeners to all inputs for auto-calculation
+        var inputs = document.querySelectorAll('.calc-input, #autoPaySelect, #setupFee, #paymentFee');
+        for (var i = 0; i < inputs.length; i++) {
+            inputs[i].addEventListener('change', runCalculatorLogic);
+            inputs[i].addEventListener('input', runCalculatorLogic);
         }
         
         // Auto-run once to initialize zeros and text
