@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retailer Compensation Calculator Widget</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <style translate="no">
+        :root { --boost-orange: #ff5400; --text-dark: #333333; --bg-light: #f9f9f9; --border-color: #e0e0e0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: var(--text-dark); background-color: transparent; margin: 0; padding: 10px; }
+        h3 { color: var(--boost-orange); margin-top: 0; font-size: 1.4rem; display: flex; align-items: center; justify-content: space-between; }
+        .brand-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .brand-card { border: 1px solid var(--border-color); border-radius: 8px; padding: 20px; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        .calc-input { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 4px; margin-top: 4px; font-size: 1rem; transition: border-color 0.2s; }
+        .calc-input:focus { outline: none; border-color: var(--boost-orange); box-shadow: 0 0 0 2px rgba(255, 84, 0, 0.2); }
+        .calc-label { font-weight: bold; display: block; margin-top: 15px; color: var(--text-dark); }
+        .output-box { background-color: var(--bg-light); border: 2px solid var(--boost-orange); border-radius: 8px; padding: 20px; text-align: center; margin-bottom: 15px; }
+        .output-value { font-size: 2.5rem; font-weight: bold; color: var(--boost-orange); line-height: 1.2; }
+        .calc-btn { background-color: var(--boost-orange); color: #fff; border: none; padding: 12px 20px; font-size: 1.1rem; font-weight: bold; border-radius: 4px; cursor: pointer; width: 100%; margin-top: 20px; transition: background-color 0.2s; text-transform: uppercase; }
+        .calc-btn:hover { background-color: #e64a00; }
+    </style>
+</head>
+<body>
+
+    <div class="brand-grid">
+        <!-- Inputs Card -->
+        <div class="brand-card">
+            <h3>Transaction Details</h3>
+            
+            <form id="calculatorForm">
+                <label class="calc-label" for="planSelect">Plan Selection</label>
+                <select id="planSelect" class="calc-input">
+                    <option value="30">$25 Unlimited (Base Cost: $30)</option>
+                    <option value="45">$40 Global Connection (Base Cost: $45)</option>
+                    <option value="55">$50 Unlimited+ (Base Cost: $55)</option>
+                    <option value="65">$60 Unlimited Premium (Base Cost: $65)</option>
+                </select>
+
+                <label class="calc-label" for="typeSelect">Transaction Type</label>
+                <select id="typeSelect" class="calc-input">
+                    <option value="subsidized">Subsidized Activation</option>
+                    <option value="byo">BYO (Non-Subsidized) Activation</option>
+                    <option value="upgrade">Device Upgrade</option>
+                </select>
+
+                <div class="mt-4 mb-2 flex items-center">
+                    <input type="checkbox" id="autoPaySelect" class="w-5 h-5" style="accent-color: var(--boost-orange); cursor: pointer;" checked>
+                    <label for="autoPaySelect" class="ml-2 font-bold" style="margin-top: 0; color: var(--text-dark); cursor: pointer;">Enrolled in AutoPay</label>
+                </div>
+
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <label class="calc-label" for="setupFee">Device Setup Fee ($)</label>
+                        <input type="number" id="setupFee" class="calc-input" min="0" max="35" value="4" placeholder="0 - 35">
+                        <p class="text-xs text-gray-500 mt-1">Max: $35</p>
+                    </div>
+                    <div class="flex-1">
+                        <label class="calc-label" for="paymentFee">In-Store Payment Fee ($)</label>
+                        <input type="number" id="paymentFee" class="calc-input" min="0" max="4" value="4" placeholder="0 - 4">
+                        <p class="text-xs text-gray-500 mt-1">Max: $4</p>
+                    </div>
+                </div>
+                
+                <button type="button" id="calculateBtn" class="calc-btn">Calculate Expected Payout</button>
+            </form>
+        </div>
+
+        <!-- Outputs Card -->
+        <div class="brand-card flex flex-col justify-center">
+            <h3>Expected Payout</h3>
+            
+            <div id="mrcBreakdownText" class="text-sm text-center mb-4 font-medium bg-gray-100 p-3 rounded border border-gray-200">
+                Commission Basis: <strong style="color: var(--boost-orange)">-</strong>
+            </div>
+
+            <div class="output-box">
+                <div class="text-sm font-bold uppercase tracking-wide text-gray-600">Month 1 Payout</div>
+                <div id="month1Output" class="output-value">$0.00</div>
+                <div id="month1Breakdown" class="mt-4 text-left bg-white p-3 rounded border border-gray-200"></div>
+            </div>
+
+            <div class="output-box">
+                <div class="text-sm font-bold uppercase tracking-wide text-gray-600">Month 2 Payout</div>
+                <div id="month2Output" class="output-value">$0.00</div>
+                <div id="month2Breakdown" class="mt-4 text-left bg-white p-3 rounded border border-gray-200"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Formatting helpers
+        var formatCurrency = function(num) {
+            return '$' + parseFloat(num).toFixed(2);
+        };
+
+        var formatBreakdownList = function(items) {
+            var html = '<ul style="list-style-type: none; padding: 0; margin: 0; font-size: 0.85em; line-height: 1.5;">';
+            for (var i = 0; i < items.length; i++) {
+                var item = items[i];
+                var border = (i === items.length - 1) ? 'none' : '1px solid #eee';
+                html += '<li style="display: flex; justify-content: space-between; border-bottom: ' + border + '; padding: 5px 0;">';
+                html += '<span style="font-weight: 600; color: #666;">' + item.label + '</span>';
+                html += '<span style="color: var(--text-dark);">' + formatCurrency(item.value) + '</span>';
+                html += '</li>';
+            }
+            html += '</ul>';
+            return html;
+        };
+
+        // Core math logic
+        var runCalculatorLogic = function() {
+            var planSelect = document.getElementById('planSelect');
+            var typeSelect = document.getElementById('typeSelect');
+            var autoPaySelect = document.getElementById('autoPaySelect');
+            var setupFeeInput = document.getElementById('setupFee');
+            var paymentFeeInput = document.getElementById('paymentFee');
+            
+            var month1Output = document.getElementById('month1Output');
+            var month2Output = document.getElementById('month2Output');
+            var mrcBreakdownText = document.getElementById('mrcBreakdownText');
+            
+            if (!planSelect || !month1Output) return;
+
+            var mrc = parseFloat(planSelect.value) || 0;
+            var type = typeSelect.value;
+            var isAutoPay = autoPaySelect.checked;
+            
+            var setupFee = parseFloat(setupFeeInput.value) || 0;
+            if (setupFee < 0) setupFee = 0;
+            if (setupFee > 35) setupFee = 35;
+
+            var paymentFee = parseFloat(paymentFeeInput.value) || 0;
+            if (paymentFee < 0) paymentFee = 0;
+            if (paymentFee > 4) paymentFee = 4;
+
+            var totalOneTimeFees = setupFee + paymentFee;
+            var activeMrc = isAutoPay ? (mrc - 5) : mrc;
+
+            if (mrcBreakdownText) {
+                if (isAutoPay) {
+                    mrcBreakdownText.innerHTML = 'Commission Basis: <strong style="color: var(--boost-orange); font-size: 1.1em;">$' + activeMrc + ' MRC</strong><br><span style="font-size: 0.85em; color: #666;">($' + mrc + ' Base - $5 AutoPay Discount)</span>';
+                } else {
+                    mrcBreakdownText.innerHTML = 'Commission Basis: <strong style="color: var(--boost-orange); font-size: 1.1em;">$' + mrc + ' MRC</strong><br><span style="font-size: 0.85em; color: #666;">(No AutoPay Discount Applied)</span>';
+                }
+            }
+
+            var m1 = 0;
+            var m2 = 0;
+            var m1Breakdown = [];
+            var m2Breakdown = [];
+
+            var stdIncentive = activeMrc * 0.05;
+            var newActSub = activeMrc * 0.10;
+            var simLoad = activeMrc * 0.10;
+            var newActByo = activeMrc * 0.50;
+            var upgradeBounty = activeMrc * 0.125;
+            var autoPayIncentive = isAutoPay ? (activeMrc * 0.05) : 0;
+
+            if (type === 'subsidized') {
+                m1 = stdIncentive + newActSub + simLoad + totalOneTimeFees;
+                m1Breakdown.push({ label: 'Standard (5%)', value: stdIncentive });
+                m1Breakdown.push({ label: 'New Act (10%)', value: newActSub });
+                m1Breakdown.push({ label: 'SIM Load (10%)', value: simLoad });
+                if (totalOneTimeFees > 0) m1Breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
+
+                m2 = stdIncentive + newActSub + simLoad + autoPayIncentive;
+                m2Breakdown.push({ label: 'Standard (5%)', value: stdIncentive });
+                m2Breakdown.push({ label: 'New Act (10%)', value: newActSub });
+                m2Breakdown.push({ label: 'SIM Load (10%)', value: simLoad });
+                if (isAutoPay) m2Breakdown.push({ label: 'AutoPay (5%)', value: autoPayIncentive });
+            } else if (type === 'byo') {
+                m1 = stdIncentive + newActByo + totalOneTimeFees;
+                m1Breakdown.push({ label: 'Standard (5%)', value: stdIncentive });
+                m1Breakdown.push({ label: 'New Act (50%)', value: newActByo });
+                if (totalOneTimeFees > 0) m1Breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
+
+                m2 = stdIncentive + newActByo + autoPayIncentive;
+                m2Breakdown.push({ label: 'Standard (5%)', value: stdIncentive });
+                m2Breakdown.push({ label: 'New Act (50%)', value: newActByo });
+                if (isAutoPay) m2Breakdown.push({ label: 'AutoPay (5%)', value: autoPayIncentive });
+            } else if (type === 'upgrade') {
+                m1 = upgradeBounty + totalOneTimeFees;
+                m1Breakdown.push({ label: 'Upgrade (12.5%)', value: upgradeBounty });
+                if (totalOneTimeFees > 0) m1Breakdown.push({ label: 'One-Time Fees', value: totalOneTimeFees });
+
+                m2 = upgradeBounty;
+                m2Breakdown.push({ label: 'Upgrade (12.5%)', value: upgradeBounty });
+            }
+
+            month1Output.textContent = formatCurrency(m1);
+            document.getElementById('month1Breakdown').innerHTML = formatBreakdownList(m1Breakdown);
+            
+            month2Output.textContent = formatCurrency(m2);
+            document.getElementById('month2Breakdown').innerHTML = formatBreakdownList(m2Breakdown);
+        };
+
+        var btn = document.getElementById('calculateBtn');
+        if (btn) {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                runCalculatorLogic();
+            });
+        }
+        
+        // Auto-run once to initialize zeros and text
+        runCalculatorLogic();
+    </script>
+</body>
+</html>
