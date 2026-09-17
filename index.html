@@ -69,6 +69,18 @@
                     </tbody>
                 </table>
             </div>
+
+            <!-- Cumulative and Ongoing Summary -->
+            <div id="summaryBox" class="mt-6 flex flex-col sm:flex-row gap-4 border-t border-gray-200 pt-6">
+                 <div class="flex-1 bg-orange-50 border border-orange-200 rounded p-4 text-center">
+                     <div id="cumulativeLabel" class="text-sm font-bold uppercase tracking-wide text-orange-600">Cumulative Total (Months 1-6)</div>
+                     <div id="cumulativeOutput" class="text-2xl font-bold text-orange-700 mt-1">$0.00</div>
+                 </div>
+                 <div class="flex-1 bg-gray-50 border border-gray-200 rounded p-4 text-center">
+                     <div id="ongoingLabel" class="text-sm font-bold uppercase tracking-wide text-gray-600">Ongoing (Months 7+)</div>
+                     <div id="ongoingOutput" class="text-2xl font-bold text-gray-800 mt-1">$0.00 / mo</div>
+                 </div>
+            </div>
         </div>
     </div>
 
@@ -96,7 +108,6 @@
         var currentLines = 0;
         var maxLines = 7;
 
-        // Creates a new plan block in the DOM
         function addLine() {
             if (currentLines >= maxLines) return;
             lineCounter++;
@@ -131,7 +142,6 @@
                         '<select class="calc-input type-select">' +
                             '<option value="subsidized">Subsidized Activation</option>' +
                             '<option value="byo">BYO (Non-Subsidized) Activation</option>' +
-                            '<option value="upgrade">Device Upgrade</option>' +
                         '</select>' +
                     '</div>' +
                 '</div>' +
@@ -147,7 +157,6 @@
 
             document.getElementById('linesContainer').appendChild(div);
 
-            // Re-bind listeners for auto-calc
             var inputs = div.querySelectorAll('select, input');
             for (var i = 0; i < inputs.length; i++) {
                 inputs[i].addEventListener('change', runCalculatorLogic);
@@ -170,7 +179,6 @@
             var btn = document.getElementById('addLineBtn');
             btn.style.display = (currentLines >= maxLines) ? 'none' : 'flex';
             
-            // Renumber the titles to stay sequential (Plan 1, Plan 2, etc.) even if middle one deleted
             var cards = document.querySelectorAll('.line-card');
             for(var i = 0; i < cards.length; i++) {
                 var title = cards[i].querySelector('.line-title');
@@ -194,19 +202,19 @@
 
             var overallMaxMonths = 0;
             var totalBasis = 0;
+            var totalCumulative = 0;
+            var totalOngoing = 0;
 
             var globalPaymentFee = parseFloat(document.getElementById('globalPaymentFee').value) || 0;
             if (globalPaymentFee < 0) globalPaymentFee = 0;
             if (globalPaymentFee > 4) globalPaymentFee = 4;
 
-            // Arrays to hold merged data across all plans
             var monthTotals = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
             var monthBreakdowns = {1:[], 2:[], 3:[], 4:[], 5:[], 6:[]};
 
-            // Calculate each plan individually and add it to the merged table
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
-                var displayNum = i + 1; // Used for "Plan 1:", "Plan 2:" labels
+                var displayNum = i + 1; 
                 
                 var mrc = parseFloat(line.querySelector('.plan-select').value) || 0;
                 totalBasis += mrc;
@@ -217,20 +225,22 @@
                 if (setupFee < 0) setupFee = 0;
                 if (setupFee > 35) setupFee = 35;
 
-                var totalOneTimeFees = setupFee;
+                var isWatchOrTablet = (mrc === 10 || mrc === 20);
 
                 var stdIncentive = mrc * 0.05;
-                var newActSub = mrc * 0.10;
-                var simLoad = mrc * 0.10;
-                var newActByo = mrc * 0.50;
-                var upgradeBounty = mrc * 0.125;
                 var autoPayIncentive = isAutoPay ? (mrc * 0.05) : 0;
+                
+                // 5% Override for Watches and Tablets across the board
+                var newActSub = isWatchOrTablet ? (mrc * 0.05) : (mrc * 0.10);
+                var simLoad = isWatchOrTablet ? (mrc * 0.05) : (mrc * 0.10);
+                var newActByo = isWatchOrTablet ? (mrc * 0.05) : (mrc * 0.50);
 
-                // Determine months for this specific plan
                 var planMaxMonths = (type === 'byo') ? 4 : 6;
                 if (planMaxMonths > overallMaxMonths) {
                     overallMaxMonths = planMaxMonths;
                 }
+
+                totalOngoing += (stdIncentive + autoPayIncentive);
 
                 for (var m = 1; m <= planMaxMonths; m++) {
                     var totalForMonth = 0;
@@ -238,12 +248,12 @@
                     if (type === 'subsidized') {
                         totalForMonth += stdIncentive + newActSub + simLoad;
                         monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty (10%)', value: newActSub });
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Simplified SIM Loading (10%)', value: simLoad });
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty ' + (isWatchOrTablet ? '(5%)' : '(10%)'), value: newActSub });
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Simplified SIM Loading ' + (isWatchOrTablet ? '(5%)' : '(10%)'), value: simLoad });
 
-                        if (m === 1 && totalOneTimeFees > 0) {
-                            totalForMonth += totalOneTimeFees;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': One-Time Fees', value: totalOneTimeFees });
+                        if (m === 1 && setupFee > 0) {
+                            totalForMonth += setupFee;
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Device Setup Fee', value: setupFee });
                         }
                         if (m > 1 && isAutoPay) {
                             totalForMonth += autoPayIncentive;
@@ -252,25 +262,17 @@
                     } else if (type === 'byo') {
                         totalForMonth += stdIncentive + newActByo;
                         monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty (50%)', value: newActByo });
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty ' + (isWatchOrTablet ? '(5%)' : '(50%)'), value: newActByo });
 
-                        if (m === 1 && totalOneTimeFees > 0) {
-                            totalForMonth += totalOneTimeFees;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': One-Time Fees', value: totalOneTimeFees });
+                        if (m === 1 && setupFee > 0) {
+                            totalForMonth += setupFee;
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Device Setup Fee', value: setupFee });
                         }
                         if (m > 1 && isAutoPay) {
                             totalForMonth += autoPayIncentive;
                             monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
                         }
-                    } else if (type === 'upgrade') {
-                        totalForMonth += upgradeBounty;
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Upgrade Bounty (12.5%)', value: upgradeBounty });
-
-                        if (m === 1 && totalOneTimeFees > 0) {
-                            totalForMonth += totalOneTimeFees;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': One-Time Fees', value: totalOneTimeFees });
-                        }
-                    }
+                    } 
 
                     monthTotals[m] += totalForMonth;
                 }
@@ -281,12 +283,11 @@
                 monthBreakdowns[1].push({ label: 'Transaction: In-Store Payment Fee', value: globalPaymentFee });
             }
 
-            // Update top total
             mrcBreakdownText.innerHTML = 'Total Commission Basis: <strong style="color: var(--boost-orange); font-size: 1.1em;">$' + totalBasis.toFixed(2) + ' MRC</strong>';
 
-            // Clear table and draw rows
             dynamicOutputs.innerHTML = '';
             for (var m = 1; m <= overallMaxMonths; m++) {
+                totalCumulative += monthTotals[m];
                 var trHtml = '<tr>' +
                              '<td style="font-weight: bold; color: #555; white-space: nowrap;">Month ' + m + '</td>' +
                              '<td style="font-size: 1.5rem; font-weight: bold; color: var(--boost-orange); white-space: nowrap;">' + formatCurrency(monthTotals[m]) + '</td>' +
@@ -294,9 +295,15 @@
                              '</tr>';
                 dynamicOutputs.innerHTML += trHtml;
             }
+
+            // Update Summary Box
+            var nextMonth = overallMaxMonths + 1;
+            document.getElementById('cumulativeLabel').innerText = 'Cumulative Total (Months 1-' + overallMaxMonths + ')';
+            document.getElementById('cumulativeOutput').innerText = formatCurrency(totalCumulative);
+            document.getElementById('ongoingLabel').innerText = 'Ongoing (Months ' + nextMonth + '+)';
+            document.getElementById('ongoingOutput').innerText = formatCurrency(totalOngoing) + ' / mo';
         }
 
-        // Initialize first line and click listener for the Add button
         document.getElementById('addLineBtn').addEventListener('click', addLine);
         
         var globalFeeInput = document.getElementById('globalPaymentFee');
@@ -305,9 +312,8 @@
             globalFeeInput.addEventListener('input', runCalculatorLogic);
         }
 
-        addLine(); // Start with 1 plan showing
+        addLine(); 
 
-        // Auto-resize logic for iframe hosting
         if (window.ResizeObserver) {
             const resizeObserver = new ResizeObserver(() => {
                 const newHeight = document.body.scrollHeight + 20; 
