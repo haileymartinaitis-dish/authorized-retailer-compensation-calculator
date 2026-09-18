@@ -291,7 +291,20 @@
                             totalForMonth += autoPayIncentive;
                             monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
                         }
-                    } 
+                    } else if (type === 'byo') {
+                        totalForMonth += stdIncentive + newActByo;
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty ' + (isWatchOrTablet ? '(5%)' : '(50%)'), value: newActByo });
+
+                        if (m === 1 && setupFee > 0) {
+                            totalForMonth += setupFee;
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Device Setup Fee', value: setupFee });
+                        }
+                        if (m > 1 && isAutoPay) {
+                            totalForMonth += autoPayIncentive;
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
+                        }
+                    }
 
                     monthTotals[m] += totalForMonth;
                 }
