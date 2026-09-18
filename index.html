@@ -142,6 +142,7 @@
                         '<select class="calc-input type-select">' +
                             '<option value="subsidized">Subsidized Activation</option>' +
                             '<option value="byo">BYO (Non-Subsidized) Activation</option>' +
+                            '<option value="upgrade">Device Upgrade</option>' +
                         '</select>' +
                     '</div>' +
                 '</div>' +
@@ -156,6 +157,23 @@
                 '</div>';
 
             document.getElementById('linesContainer').appendChild(div);
+
+            var planSelect = div.querySelector('.plan-select');
+            var typeSelect = div.querySelector('.type-select');
+            planSelect.addEventListener('change', function() {
+                var isWatchTablet = (this.value === '10' || this.value === '20');
+                var upgradeOpt = typeSelect.querySelector('option[value="upgrade"]');
+                if (upgradeOpt) {
+                    if (isWatchTablet) {
+                        upgradeOpt.disabled = true;
+                        if (typeSelect.value === 'upgrade') {
+                            typeSelect.value = 'subsidized'; // Auto-switch off upgrade if disabled
+                        }
+                    } else {
+                        upgradeOpt.disabled = false;
+                    }
+                }
+            });
 
             var inputs = div.querySelectorAll('select, input');
             for (var i = 0; i < inputs.length; i++) {
@@ -234,6 +252,7 @@
                 var newActSub = isWatchOrTablet ? (mrc * 0.05) : (mrc * 0.10);
                 var simLoad = isWatchOrTablet ? (mrc * 0.05) : (mrc * 0.10);
                 var newActByo = isWatchOrTablet ? (mrc * 0.05) : (mrc * 0.50);
+                var upgradeBounty = mrc * 0.125;
 
                 var planMaxMonths = (type === 'byo') ? 4 : 6;
                 if (planMaxMonths > overallMaxMonths) {
@@ -259,10 +278,10 @@
                             totalForMonth += autoPayIncentive;
                             monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
                         }
-                    } else if (type === 'byo') {
-                        totalForMonth += stdIncentive + newActByo;
+                    } else if (type === 'upgrade') {
+                        totalForMonth += stdIncentive + upgradeBounty;
                         monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty ' + (isWatchOrTablet ? '(5%)' : '(50%)'), value: newActByo });
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Upgrade Bounty (12.5%)', value: upgradeBounty });
 
                         if (m === 1 && setupFee > 0) {
                             totalForMonth += setupFee;
