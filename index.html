@@ -315,7 +315,7 @@
                     } else {
                         // OUTSIDE BOUNTY TIMEFRAME (e.g. BYO plan hitting month 5 and 6)
                         totalForMonth += stdIncentive;
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%) <span class="text-xs text-gray-500 font-normal ml-1">(Ongoing Residuals)</span>', value: stdIncentive });
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
                     }
 
                     if (m === 1 && setupFee > 0) {
@@ -324,14 +324,7 @@
                     }
                     if (m > 1 && isAutoPay) {
                         totalForMonth += autoPayIncentive;
-                        
-                        // Append "Ongoing Residuals" to Auto Top Up if we are past the bounty timeframe
-                        var autoPayLabel = 'Plan ' + displayNum + ': Auto Top Up (5%)';
-                        if (m > planMaxMonths) {
-                            autoPayLabel += ' <span class="text-xs text-gray-500 font-normal ml-1">(Ongoing Residuals)</span>';
-                        }
-                        
-                        monthBreakdowns[m].push({ label: autoPayLabel, value: autoPayIncentive });
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
                     }
 
                     monthTotals[m] += totalForMonth;
