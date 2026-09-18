@@ -36,7 +36,7 @@
                 
                 <div class="mt-4 p-4 border border-gray-200 rounded-md bg-gray-50">
                     <label class="calc-label" style="margin-top: 0;" for="globalPaymentFee">In-Store Payment Fee ($)</label>
-                    <input type="number" id="globalPaymentFee" class="calc-input" min="0" max="4" value="4" placeholder="0 - 4">
+                    <input type="number" id="globalPaymentFee" class="calc-input" min="0" max="4" value="0" placeholder="0 - 4">
                     <p class="text-xs text-gray-500 mt-1">Applied once per transaction. Max: $4</p>
                 </div>
                 
@@ -71,14 +71,17 @@
             </div>
 
             <!-- Cumulative and Ongoing Summary -->
-            <div id="summaryBox" class="mt-6 flex flex-col sm:flex-row gap-4 border-t border-gray-200 pt-6">
-                 <div class="flex-1 bg-orange-50 border border-orange-200 rounded p-4 text-center">
-                     <div id="cumulativeLabel" class="text-sm font-bold uppercase tracking-wide text-orange-600">Cumulative Total (Months 1-6)</div>
-                     <div id="cumulativeOutput" class="text-2xl font-bold text-orange-700 mt-1">$0.00</div>
+            <div id="summaryBox" class="mt-6 flex flex-col md:flex-row gap-4 border-t border-gray-200 pt-6">
+                 <div class="flex-1 bg-orange-50 border border-orange-200 rounded p-4 text-center flex flex-col justify-center">
+                     <div id="cumulativeLabel" class="text-sm font-bold uppercase tracking-wide text-orange-600">Cumulative Total</div>
+                     <div id="cumulativeOutput" class="text-3xl font-bold text-orange-700 mt-2">$0.00</div>
                  </div>
-                 <div class="flex-1 bg-gray-50 border border-gray-200 rounded p-4 text-center">
-                     <div id="ongoingLabel" class="text-sm font-bold uppercase tracking-wide text-gray-600">Ongoing (Months 7+)</div>
-                     <div id="ongoingOutput" class="text-2xl font-bold text-gray-800 mt-1">$0.00 / mo</div>
+                 <div class="flex-1 bg-gray-50 border border-gray-200 rounded p-4 flex flex-col">
+                     <div id="ongoingLabel" class="text-sm font-bold uppercase tracking-wide text-gray-600 text-center border-b border-gray-200 pb-2 mb-2">Ongoing Payout</div>
+                     <div id="ongoingOutput" class="text-2xl font-bold text-gray-800 text-center mb-3">$0.00 / mo</div>
+                     <div id="ongoingBreakdown" class="text-sm bg-white rounded border border-gray-200 flex-grow">
+                         <!-- Ongoing list injected here -->
+                     </div>
                  </div>
             </div>
         </div>
@@ -89,13 +92,14 @@
             return '$' + parseFloat(num).toFixed(2);
         };
 
-        var formatBreakdownList = function(items) {
-            if (items.length === 0) return '<span style="color: #999; font-style: italic;">No payouts this month</span>';
+        var formatBreakdownList = function(items, isOngoing) {
+            if (items.length === 0) return '<div style="padding: 10px; text-align: center; color: #999; font-style: italic;">No active payouts</div>';
             var html = '<ul style="list-style-type: none; padding: 0; margin: 0; font-size: 0.85em; line-height: 1.5;">';
+            var padding = isOngoing ? 'padding: 8px 10px;' : 'padding: 5px 0;';
             for (var i = 0; i < items.length; i++) {
                 var item = items[i];
                 var border = (i === items.length - 1) ? 'none' : '1px solid #eee';
-                html += '<li style="display: flex; justify-content: space-between; border-bottom: ' + border + '; padding: 5px 0;">';
+                html += '<li style="display: flex; justify-content: space-between; border-bottom: ' + border + '; ' + padding + '">';
                 html += '<span style="font-weight: 600; color: #666;">' + item.label + '</span>';
                 html += '<span style="color: var(--text-dark);">' + formatCurrency(item.value) + '</span>';
                 html += '</li>';
@@ -152,12 +156,13 @@
                 '</div>' +
                 '<div class="mb-2">' +
                     '<label class="calc-label" style="margin-top: 0;">Device Setup Fee ($)</label>' +
-                    '<input type="number" class="calc-input setup-fee" min="0" max="35" value="4" placeholder="0 - 35">' +
+                    '<input type="number" class="calc-input setup-fee" min="0" max="35" value="0" placeholder="0 - 35">' +
                     '<p class="text-xs text-gray-500 mt-1">Applied per device. Max: $35</p>' +
                 '</div>';
 
             document.getElementById('linesContainer').appendChild(div);
 
+            // Add logic to disable "Device Upgrade" if Watch/Tablet is selected
             var planSelect = div.querySelector('.plan-select');
             var typeSelect = div.querySelector('.type-select');
             planSelect.addEventListener('change', function() {
@@ -173,12 +178,15 @@
                         upgradeOpt.disabled = false;
                     }
                 }
+                runCalculatorLogic();
             });
 
             var inputs = div.querySelectorAll('select, input');
             for (var i = 0; i < inputs.length; i++) {
-                inputs[i].addEventListener('change', runCalculatorLogic);
-                inputs[i].addEventListener('input', runCalculatorLogic);
+                if (inputs[i] !== planSelect) {
+                    inputs[i].addEventListener('change', runCalculatorLogic);
+                    inputs[i].addEventListener('input', runCalculatorLogic);
+                }
             }
 
             updateUIAfterLineChange();
@@ -223,13 +231,30 @@
             var totalCumulative = 0;
             var totalOngoing = 0;
 
+            // Figure out the maximum timeline needed based on the plans added
+            for (var i = 0; i < lines.length; i++) {
+                var type = lines[i].querySelector('.type-select').value;
+                var max = (type === 'byo') ? 4 : 6;
+                if (max > overallMaxMonths) {
+                    overallMaxMonths = max;
+                }
+            }
+
+            // Setup tracking objects
             var globalPaymentFee = parseFloat(document.getElementById('globalPaymentFee').value) || 0;
             if (globalPaymentFee < 0) globalPaymentFee = 0;
             if (globalPaymentFee > 4) globalPaymentFee = 4;
 
-            var monthTotals = {1:0, 2:0, 3:0, 4:0, 5:0, 6:0};
-            var monthBreakdowns = {1:[], 2:[], 3:[], 4:[], 5:[], 6:[]};
+            var monthTotals = {};
+            var monthBreakdowns = {};
+            var ongoingBreakdownList = [];
 
+            for (var m = 1; m <= overallMaxMonths; m++) {
+                monthTotals[m] = 0;
+                monthBreakdowns[m] = [];
+            }
+
+            // Process every line iteratively
             for (var i = 0; i < lines.length; i++) {
                 var line = lines[i];
                 var displayNum = i + 1; 
@@ -255,61 +280,65 @@
                 var upgradeBounty = mrc * 0.125;
 
                 var planMaxMonths = (type === 'byo') ? 4 : 6;
-                if (planMaxMonths > overallMaxMonths) {
-                    overallMaxMonths = planMaxMonths;
+
+                // Track total ongoing amount and breakdown
+                var lineOngoingTotal = stdIncentive + autoPayIncentive;
+                totalOngoing += lineOngoingTotal;
+                if (lineOngoingTotal > 0) {
+                    ongoingBreakdownList.push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
+                    if (isAutoPay) {
+                        ongoingBreakdownList.push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
+                    }
                 }
 
-                totalOngoing += (stdIncentive + autoPayIncentive);
-
-                for (var m = 1; m <= planMaxMonths; m++) {
+                // Loop through all visible table months
+                for (var m = 1; m <= overallMaxMonths; m++) {
                     var totalForMonth = 0;
+                    
+                    if (m <= planMaxMonths) {
+                        // WITHIN THIS SPECIFIC PLAN'S BOUNTY TIMEFRAME
+                        if (type === 'subsidized') {
+                            totalForMonth += stdIncentive + newActSub + simLoad;
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty ' + (isWatchOrTablet ? '(5%)' : '(10%)'), value: newActSub });
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Simplified SIM Loading ' + (isWatchOrTablet ? '(5%)' : '(10%)'), value: simLoad });
+                        } else if (type === 'upgrade') {
+                            // UPGRADES ONLY: Strictly 5% Standard + 12.5% Upgrade Bounty (No New Act Bounty)
+                            totalForMonth += stdIncentive + upgradeBounty;
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Upgrade Bounty (12.5%)', value: upgradeBounty });
+                        } else if (type === 'byo') {
+                            totalForMonth += stdIncentive + newActByo;
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
+                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty ' + (isWatchOrTablet ? '(5%)' : '(50%)'), value: newActByo });
+                        }
+                    } else {
+                        // OUTSIDE BOUNTY TIMEFRAME (e.g. BYO plan hitting month 5 and 6)
+                        totalForMonth += stdIncentive;
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%) <span class="text-xs text-gray-500 font-normal ml-1">(Ongoing Residuals)</span>', value: stdIncentive });
+                    }
 
-                    if (type === 'subsidized') {
-                        totalForMonth += stdIncentive + newActSub + simLoad;
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty ' + (isWatchOrTablet ? '(5%)' : '(10%)'), value: newActSub });
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Simplified SIM Loading ' + (isWatchOrTablet ? '(5%)' : '(10%)'), value: simLoad });
-
-                        if (m === 1 && setupFee > 0) {
-                            totalForMonth += setupFee;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Device Setup Fee', value: setupFee });
+                    if (m === 1 && setupFee > 0) {
+                        totalForMonth += setupFee;
+                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Device Setup Fee', value: setupFee });
+                    }
+                    if (m > 1 && isAutoPay) {
+                        totalForMonth += autoPayIncentive;
+                        
+                        // Append "Ongoing Residuals" to Auto Top Up if we are past the bounty timeframe
+                        var autoPayLabel = 'Plan ' + displayNum + ': Auto Top Up (5%)';
+                        if (m > planMaxMonths) {
+                            autoPayLabel += ' <span class="text-xs text-gray-500 font-normal ml-1">(Ongoing Residuals)</span>';
                         }
-                        if (m > 1 && isAutoPay) {
-                            totalForMonth += autoPayIncentive;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
-                        }
-                    } else if (type === 'upgrade') {
-                        totalForMonth += stdIncentive + upgradeBounty;
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Upgrade Bounty (12.5%)', value: upgradeBounty });
-
-                        if (m === 1 && setupFee > 0) {
-                            totalForMonth += setupFee;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Device Setup Fee', value: setupFee });
-                        }
-                        if (m > 1 && isAutoPay) {
-                            totalForMonth += autoPayIncentive;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
-                        }
-                    } else if (type === 'byo') {
-                        totalForMonth += stdIncentive + newActByo;
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Monthly Incentive (5%)', value: stdIncentive });
-                        monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': New Activation Bounty ' + (isWatchOrTablet ? '(5%)' : '(50%)'), value: newActByo });
-
-                        if (m === 1 && setupFee > 0) {
-                            totalForMonth += setupFee;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Device Setup Fee', value: setupFee });
-                        }
-                        if (m > 1 && isAutoPay) {
-                            totalForMonth += autoPayIncentive;
-                            monthBreakdowns[m].push({ label: 'Plan ' + displayNum + ': Auto Top Up (5%)', value: autoPayIncentive });
-                        }
+                        
+                        monthBreakdowns[m].push({ label: autoPayLabel, value: autoPayIncentive });
                     }
 
                     monthTotals[m] += totalForMonth;
                 }
             }
 
+            // Apply Global In-Store Payment Fee once
             if (overallMaxMonths > 0 && globalPaymentFee > 0) {
                 monthTotals[1] += globalPaymentFee;
                 monthBreakdowns[1].push({ label: 'Transaction: In-Store Payment Fee', value: globalPaymentFee });
@@ -317,13 +346,17 @@
 
             mrcBreakdownText.innerHTML = 'Total Commission Basis: <strong style="color: var(--boost-orange); font-size: 1.1em;">$' + totalBasis.toFixed(2) + ' MRC</strong>';
 
+            // Render Table
             dynamicOutputs.innerHTML = '';
             for (var m = 1; m <= overallMaxMonths; m++) {
                 totalCumulative += monthTotals[m];
+                // Clean up the dummy 0 value entries for visual residuals
+                var cleanedBreakdown = monthBreakdowns[m].filter(function(item) { return item.value !== 0 || item.label.indexOf('Ongoing') > -1; });
+                
                 var trHtml = '<tr>' +
                              '<td style="font-weight: bold; color: #555; white-space: nowrap;">Month ' + m + '</td>' +
                              '<td style="font-size: 1.5rem; font-weight: bold; color: var(--boost-orange); white-space: nowrap;">' + formatCurrency(monthTotals[m]) + '</td>' +
-                             '<td>' + formatBreakdownList(monthBreakdowns[m]) + '</td>' +
+                             '<td>' + formatBreakdownList(cleanedBreakdown, false) + '</td>' +
                              '</tr>';
                 dynamicOutputs.innerHTML += trHtml;
             }
@@ -334,6 +367,9 @@
             document.getElementById('cumulativeOutput').innerText = formatCurrency(totalCumulative);
             document.getElementById('ongoingLabel').innerText = 'Ongoing (Months ' + nextMonth + '+)';
             document.getElementById('ongoingOutput').innerText = formatCurrency(totalOngoing) + ' / mo';
+            
+            // Render Ongoing List
+            document.getElementById('ongoingBreakdown').innerHTML = formatBreakdownList(ongoingBreakdownList, true);
         }
 
         document.getElementById('addLineBtn').addEventListener('click', addLine);
@@ -344,8 +380,10 @@
             globalFeeInput.addEventListener('input', runCalculatorLogic);
         }
 
+        // Initialize first line
         addLine(); 
 
+        // Iframe Resizer
         if (window.ResizeObserver) {
             const resizeObserver = new ResizeObserver(() => {
                 const newHeight = document.body.scrollHeight + 20; 
